@@ -1,55 +1,68 @@
 import pandas as pd
+import numpy as np
+import re
+import seaborn as sns
+import matplotlib.pyplot as plt
+import warnings
+warnings.simplefilter("ignore")
+# Loading the dataset
+data = pd.read_csv("/content/Language Detection.csv.zip")
+# value count for each language
+data["Language"].value_counts()
+# separating the independent and dependant features
+X = data["Text"]
+y = data["Language"]
+# converting categorical variables to numerical
+from sklearn.preprocessing import LabelEncoder
+le = LabelEncoder()
+y = le.fit_transform(y)
+# creating a list for appending the preprocessed text
+data_list = []
+# iterating through all the text
+for text in X:
+    # removing the symbols and numbers
+    text = re.sub(r'[!@#$(),n"%^*?:;~`0-9]', ' ', text)
+    text = re.sub(r'[[]]', ' ', text)
+    # converting the text to lower case
+    text = text.lower()
+    # appending to data_list
+    data_list.append(text)
+# creating bag of words using countvectorizer
 from sklearn.feature_extraction.text import CountVectorizer
+cv = CountVectorizer()
+X = cv.fit_transform(data_list).toarray()
+#train test splitting
 from sklearn.model_selection import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(X, y, test_size = 0.20)
+#model creation and prediction
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.metrics import accuracy_score, classification_report
-
-# 1. Load Dataset
-data = {
-    'text': [
-        'Bonjour, comment ça va ?',
-        'Hello, how are you?',
-        'Hola, ¿cómo estás?',
-        'Hallo, wie geht es dir?',
-        'السلام عليكم',
-        'Ciao, come stai?',
-        'привет, как дела?',
-        '你好，你怎么样？'
-    ],
-    'language': ['French', 'English', 'Spanish', 'German', 'Arabic', 'Italian', 'Russian', 'Chinese']
-}
-
-dataframe = pd.DataFrame(data)
-
-# 2. Text Preprocessing
-vectorizer = CountVectorizer()
-X = vectorizer.fit_transform(dataframe['text'])
-y = dataframe['language']
-
-# 3. Split the Data
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# 4. Train the Model
 model = MultinomialNB()
-model.fit(X_train, y_train)
-
-# 5. Evaluate the Model
-y_pred = model.predict(X_test)
-accuracy = accuracy_score(y_test, y_pred)
-print(f"Accuracy: {accuracy:.2f}")
-print("Classification Report:\n", classification_report(y_test, y_pred))
-
-# 6. Test with New Sentences
-def detect_language(sentence):
-    vec_sentence = vectorizer.transform([sentence])
-    return model.predict(vec_sentence)[0]
-
-new_sentences = [
-    'Wie geht es dir?',  # German
-    'Bonjour tout le monde',  # French
-    '¿Cómo están todos?',  # Spanish
-    'حالك كيف انت؟'  # Arabic
-]
-
-for sentence in new_sentences:
-    print(f"'{sentence}' is detected as: {detect_language(sentence)}")
+model.fit(x_train, y_train)
+# prediction 
+y_pred = model.predict(x_test)
+# model evaluation
+from sklearn.metrics import accuracy_score, confusion_matrix
+ac = accuracy_score(y_test, y_pred)
+cm = confusion_matrix(y_test, y_pred)
+# visualising the confusion matrix
+plt.figure(figsize=(15,10))
+sns.heatmap(cm, annot = True)
+plt.show()
+# function for predicting language
+def predict(text):
+    x = cv.transform([text]).toarray()
+    lang = model.predict(x)
+    lang = le.inverse_transform(lang)
+    print("The langauge is in",lang[0])
+    # English
+prediction("Analytics Vidhya provides a community based knowledge portal for Analytics and Data Science professionals")
+# French
+prediction("Analytics Vidhya fournit un portail de connaissances basé sur la communauté pour les professionnels de l'analyse et de la science des données")
+# Arabic
+prediction("توفر Analytics Vidhya بوابة معرفية قائمة على المجتمع لمحترفي التحليلات وعلوم البيانات")
+# Spanish
+prediction("Analytics Vidhya proporciona un portal de conocimiento basado en la comunidad para profesionales de Analytics y Data Science.")
+# Malayalam
+prediction("അനലിറ്റിക്സ്, ഡാറ്റാ സയൻസ് പ്രൊഫഷണലുകൾക്കായി കമ്മ്യൂണിറ്റി അധിഷ്ഠിത വിജ്ഞാന പോർട്ടൽ അനലിറ്റിക്സ് വിദ്യ നൽകുന്നു")
+# Russian
+prediction("Analytics Vidhya - это портал знаний на базе сообщества для профессионалов в области аналитики и данных.")
